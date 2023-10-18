@@ -1,11 +1,11 @@
 (require "search.arc")
-(= this-site*    "Anarki"
-   site-url*     "http://site.example.com";your domain name
-   parent-url*   "http://github.com/arclanguage/anarki"
+(= this-site*    "Two Stop Bits"
+   site-url*     "https://twostopbits.com/"
+   parent-url*   site-url*
 ; Page Layout
 
-   logo-url*     "arc.png"
-   site-desc*    "What this site is about."               ; for rss feed
+   logo-url*     "twostopbits.png"
+   site-desc*    "A retrocomputing news website."
    site-color*   (color 180 180 180)
    prefer-url*   t
 
@@ -43,6 +43,10 @@
 
 )
 
+; TODO
+
+;(declare 'direct-calls t)
+;(declare 'explicit-flush t)
 
 (def vote-url (user i dir whence)
   (+ "vote?for=" i!id
@@ -110,7 +114,8 @@
   parts      nil
   parent     nil
   kids       nil
-  keys       nil)
+  keys       nil
+  tags       nil)
 
 (deftem page 
   id 0
@@ -305,9 +310,8 @@
 
 (def author (u i) (is u i!by))
 
-
 (= stories* nil ranked-stories* nil comments* nil
-   items* (table) url->story* (table)
+   items* (table) url->story* (table) tags* nil
    maxid* 0 initload* 15000)
 
 ; The dir expression yields stories in order of file creation time
@@ -351,6 +355,7 @@
     (= (items* id) i)
     (awhen (and (astory&live i) (check i!url ~blank))
       (register-url i it))
+    (each tg i!tags (insortnew < tg tags*))
     i))
 
 ; Note that duplicates are only prevented of items that have at some
@@ -641,18 +646,20 @@
                     (when (admin, gu)
                       (page-createlink)
                       (pr " | "))
-                    (link "rss")
-                    (pr " | ")
-                    (link "bookmarklet"))
-                  
+                    (link "rss"))
+		    
                   (if (bound 'search-bar) 
                     (search-bar ,gu))
-                  (when (admin ,gu)
+
+		    (tag ("span")
+		      (pr "Two Stop Bits is a discussion web site about retro computing and gaming."))
+                  
+		    (when (admin ,gu)
                       (br2)
                       (w/bars
                         (pr (len items*) "/" maxid* " loaded")
                         (pr (round (/ (memory) 1000000)) " mb")
-                        (pr (- (msec) ,gd) " msec")
+; TODO ,gd nil?                        (pr (- (msec) ,gd) " msec")
                         (link "settings" "newsadmin")
                         (link "appeditor")
                         (hook 'admin-bar ,gu ,gw)))))
@@ -794,6 +801,19 @@
                (set-ip-ban user (arg req "ip") t)
                (admin&newsadmin-page user)))
       (single-input "" 'ip 20 "ban ip"))))
+
+(newsop tag (q)
+  (tag-page user q))
+
+(def tag-page (user tg)
+  (listpage user (tagmatch stories* tg) "tag"
+    (string "Stories tagged \"" tg #\")))
+
+(def tagmatch (stories tg)
+  (keep [is _!deleted nil] (keep [tagged? _ tg] stories)))
+
+(def tagged? (story tg)
+  (some [is _ tg] story!tags))
 
 ;   Search bar for News
 ;   Copyright (C) 2017  Pelle Hjek
@@ -995,17 +1015,16 @@
 
 
 ; Story Display
-; TODO: only display list numbers for newest items page
 (def display-items (user items label title whence
                     (o start 0) (o end perpage*) (o number))
-    (tag (ol "class" "items-list") 
+    (tag (ol "class" "items-list" "start" start)
     (let n start
       (each i (cut items start end)
-        (tag li (display-item (and number (++ n)) i user whence t))))
+        (tag (li "class" "items-list-item") (display-item (and number (++ n)) i user whence t))))
     (when end
       (let newend (+ end perpage*)
         (when (and (<= newend maxend*) (< end (len items)))
-          (tag li 
+          (tag (li "class" "no-number") 
             (morelink display-items
               items label title end newend number)))))))
 
@@ -1034,7 +1053,10 @@
         (tag (div "class" "subtext")
           (hook 'itemline s user)
           (itemline s user)
-          (when (isnt whence "news") (search-link user s!title))
+; TODO: debug why this fails with _it undefined for a non-logged in
+;       user
+;          (when (isnt whence "news") (search-link user s!title))
+
           (when (in s!type 'story 'poll) (commentlink s user))
           (editlink s user)
           (when (apoll s) (addoptlink s user))
@@ -1052,13 +1074,12 @@
     (if (cansee user s)
       (do (deadmark s user)
           (titlelink s url user)
+	  (storytags s)
           (awhen (sitename url)
-            (tag (span "class" "comhead")
+            (tag (span "class" "comhead sitebit")
               (pr " ("
                   (tostring (link it (string "from?site=" (sitename url))))
                   ") ")
-                  ; TODO? don't show if archive is unavailable
-                  (ia-archivelink s whence)
             )))
       (pr (pseudo-text s)))))
 
@@ -1104,11 +1125,7 @@
 
 (= downvote-threshold* 200 
    downvote-time* 1440
-   votewid* 14
-   uparrow-black "&#9650;"
-   uparrow-white "&#9651;"
-   downarrow-black "&#9660;"
-   downarrow-white "&#9660;")
+   votewid* 14)
 
 (def votelinks (i user whence (o downtoo))
   (tag (span "class" "votelinks")
@@ -1121,19 +1138,20 @@
                             (< (item-age i) downvote-time*))
                         (canvote user i 'down))
                (votelink-down i user whence)))
-        ;(author user i) (do (fontcolor orange (pr "*"))))
+        (author user i) (do (fontcolor orange (pr "*")) (br) (tag (img src "s.gif" width 14)))
+	(tag (img src "s.gif" width 14))
 )))
 
 ; could memoize votelink more, esp for non-logged in users,
 ; since only uparrow is shown; could straight memoize
 
 (def votelink-up (i user whence)
-  (tag (a "class" "votelink uplink" "data-id" (string i!id) "alt" "upvote" "href" (vote-url user i 'up whence))
-    (pr uparrow-black)))
+  (tag (a "class" "votelink uplink" "data-id" (string i!id) "data-dir" "up" "alt" "upvote" "href" (vote-url user i 'up whence))
+    (tag (div "class" "votearrow"))))
 
 (def votelink-down (i user whence)
-  (tag (a "class" "votelink downlink" "data-id" (string i!id) "alt" "downvote" "href" (vote-url user i 'up whence))
-    (pr downarrow-black)))
+  (tag (a "class" "votelink downlink" "data-id" (string i!id) "data-dir" "down" "alt" "downvote" "href" (vote-url user i 'up whence))
+    (tag (div "class" "votearrow rotate180"))))
 
 (= lowest-score* -4)
 
@@ -1273,6 +1291,21 @@
   (when (or (admin user) (author user p))
     (pr bar*)
     (onlink "add choice" (add-pollopt-page p user))))
+
+(def taglink (tg)
+  (tostring (link tg (+ "/tag?q=" tg))))
+ 
+(def storytags (s)
+  (when s!tags
+    (tag (span "class" "comhead sitebit")
+      (pr " ")
+      (pr (map taglink s!tags)))))
+
+(def spaceplus (a b)
+  (+ a " " b))
+  
+(def knowntags ()
+  (reduce spaceplus tags*))
 
 ; reset later
 
@@ -1489,25 +1522,26 @@
 
 (newsop submit ()
   (if user
-    (submit-page user "" "" t)
-    (submit-login-warning "" "" t)))
+    (submit-page user "" "" "" t)
+    (submit-login-warning "" "" "" t)))
 
-(def submit-login-warning ((o url) (o title) (o showtext) (o text)
+(def submit-login-warning ((o url) (o title) (o tags) (o showtext) (o text)
                            (o req)) ; unused
   (news-login-page "You have to be logged in to submit."
               (fn (user ip)
                 (ensure-news-user user)
                 (newslog ip user 'submit-login)
-                (submit-page user url title showtext text))))
+                (submit-page user url title tags showtext text))))
 
-(def submit-page (user (o url) (o title) (o showtext) (o text "") (o msg)
-                       (o req)) ; unused
+(def submit-page (user (o url) (o title) (o tags) (o showtext) (o text "")
+     		       (o msg) (o req)) ; unused
   (longpage user "Submit" (+ this-site* bar* "Submit") "/"
     (pagemessage msg)
     (urform user req
             (process-story (get-user req)
                            (clean-url (arg req "u"))
                            (striptags (arg req "t"))
+			   (striptags (arg req "tg"))
                            showtext
                            (and showtext (md-from-form (arg req "x") t))
                            req!ip)
@@ -1521,39 +1555,27 @@
           (do (row "text" (textarea "x" 4 50 (only.pr text)))
               (row "" "<b>or</b>")
               (row "url" (input "u" url 50))))
+        (row "tags" (input "tg" tags 30))
         (row "" (submit))
         (spacerow 20)
         (row "" submit-instructions*)
         (spacerow 20)
-        (row "" submit-via-bookmarklet*)))))
+        (row "" submit-tags*)
+        (spacerow 20)
+        (row "known tags" (pr (knowntags)))))))
 
 (= submit-instructions*
-   "Leave url blank to submit a question for discussion. If there is
-    no url, the text (if any) will appear at the top of the comments
-    page. If there is a url, the text will be ignored.")
+   "Leave URL blank to submit a question for discussion. If there is
+    no URL, the text (if any) will appear at the top of the comments
+    page. If there is a URL, the text will be ignored.")
 
-(= submit-via-bookmarklet*
-   (tostring
-     (pr "You can also submit via ")
-     (underlink "bookmarklet")
-     (pr ".")))
+(= tags-limit* 8)
 
-; Bookmarklet
-
-(newsop bookmarklet ()
-  (msgpage user
-    (tostring
-      (row "When you click on the bookmarklet, it will submit the page you're on. To install, drag the link below to your browser bookmark bar.")
-      (row (center (tag (span style "font-size: 2em") (underlink
-        (string "Post to " this-site*)
-        (string "javascript:window.location='"
-                site-url*
-                "/submitlink?u='+encodeURIComponent(document.location)+'&t='+encodeURIComponent(document.title)"))))))
-    "Bookmarklet"))
-
-; For use by outside code like bookmarklet.
-; http://news.domain.com/submitlink?u=http://foo.com&t=Foo
-; Added a confirm step to avoid xss hacks.
+(= submit-tags* 
+   "Tags can contain a-z0-9. Tags must be space-separated. Maximum of
+    @tags-limit* tags. Currently known tags are shown below. Feel free to add
+    new ones. Prefer short tags over long ones (e.g. c64 better than
+    commodore64).")
 
 (newsop submitlink (u t)
   (if user
@@ -1561,8 +1583,12 @@
     (submit-login-warning u t)))
 
 (= title-limit* 80
+   tag-limit*   16
    retry*       "Please try again."
    toolong*     "Please make title < @title-limit* characters."
+   tootags*     "Too many tags. Maximum is @tags-limit* tags."
+   badtags*     "Tags can only contains letters (a-z) and numbers (0-9)."
+   longtag*     "Tags can't be more rthan tag-limit* characters each."
    bothblank*   "The url and text fields can't both be blank.  Please
                  either supply a url, or if you're asking a question,
                  put it in the text field."
@@ -1574,32 +1600,40 @@
 
 (disktable big-spamsites* (+ newsdir* "big-spamsites"))
 
-(def process-story (user url title showtext text ip)
+(def process-story (user url title tags showtext text ip)
   (aif (and (~blank url) (live-story-w/url url))
     (do (vote-for user it)
         (item-url it!id))
     ; NOTE: Here in Anarki, [...] without _ is nullary, so we're
     ; using (fn (_) (...)) instead.
-    (if (no user)
-         (flink [submit-login-warning url title showtext text _])
-        (no (and (or (blank url) (valid-url url))
+    (let tags-list (tokens (downcase tags))
+      (if (no user)
+           (flink [submit-login-warning url title tags showtext text _])
+          (no (and (or (blank url) (valid-url url))
                  (~blank title)))
-         (flink [submit-page user url title showtext text retry* _])
-        (len> title title-limit*)
-         (flink [submit-page user url title showtext text toolong* _])
-        (and (blank url) (blank text))
-         (flink [submit-page user url title showtext text bothblank* _])
-        (let site (sitename url)
-          (or (big-spamsites* site) (recent-spam site)))
-         (flink:fn (_) (msgpage user spammage*))
-        (oversubmitting user ip 'story url)
-         (flink:fn (_) (msgpage user toofast*))
-        (let s (create-story url (process-title title) text user ip)
-          (story-ban-test user s ip url)
-          (when (ignored user) (kill s 'ignored))
-          (submit-item user s)
-          (maybe-ban-ip s)
-          "newest"))))
+           (flink [submit-page user url title tags showtext text retry* _])
+          (len> title title-limit*)
+           (flink [submit-page user url title tags showtext text toolong* _])
+          (and (blank url) (blank text))
+           (flink [submit-page user url title tags showtext text bothblank* _])
+  	  (len> tags-list tags-limit*)
+           (flink [submit-page user url title tags showtext text tootags* _])
+	  (some [some ~alphadig _] tags-list)
+           (flink [submit-page user url title tags showtext text badtags* _])
+	  (some [len> _ tag-limit*] tags-list)
+           (flink [submit-page user url title tags showtext text longtag* _])
+          (let site (sitename url)
+            (or (big-spamsites* site) (recent-spam site)))
+           (flink:fn (_) (msgpage user spammage*))
+          (oversubmitting user ip 'story url)
+           (flink:fn (_) (msgpage user toofast*))
+          (let s (create-story url (process-title title) text tags-list
+	                       user ip)
+            (story-ban-test user s ip url)
+            (when (ignored user) (kill s 'ignored))
+            (submit-item user s)
+            (maybe-ban-ip s)
+            "newest")))))
 
 (def submit-item (user i)
   (push i!id (uvar user submitted))
@@ -1668,12 +1702,14 @@
                    ; "sampasite"  "multiply" "wetpaint" ; all spam, just ban
                    "eurekster" "blogsome" "edogo" "blog" "com"))
 
-(def create-story (url title text user ip)
+(def create-story (url title text tags-list user ip)
   (newslog ip user 'create url (list title))
   (let s (inst 'item 'type 'story 'id (new-item-id)
-                     'url url 'title title 'text text 'by user 'ip ip)
+                     'url url 'title title 'text text 'tags tags-list
+		     'by user 'ip ip)
     (save-item s)
     (= (items* s!id) s)
+    (each tg tags-list (insortnew < tg tags*))
     (unless (blank url) (register-url s url))
     (push s stories*)
     s))
@@ -1977,10 +2013,12 @@
 
 (= (fieldfn* 'story)
    (fn (user s)
-     (with (a (admin user)  e (editor user)  x (canedit user s))
-       `((string1 title     ,s!title        t ,x)
-         (url     url       ,s!url          t ,e)
-         (mdtext2 text      ,s!text         t ,x)
+     (with (a (admin user)  e (editor user)  x (canedit user s)
+            tg (reduce spaceplus s!tags))
+       `((string1 title     ,s!title                   t ,x)
+         (url     url       ,s!url                     t ,e)
+         (mdtext2 text      ,s!text                    t ,x)
+	 (string  tags      ,tg                        t ,x)
          ,@(standard-item-fields s a e x)))))
 
 (= (fieldfn* 'comment)
@@ -2038,10 +2076,12 @@
                         (edit-item user i)))
       (hook 'edit user i))))
 
+; TODO add checking of the tags here
+; TODO make saving tags work
+
 (def ignore-edit (user i name val)
   (case name title (len> val title-limit*)
              dead  (and (mem 'nokill i!keys) (~admin user))))
-
 
 ; Comment Submission
 

@@ -68,11 +68,11 @@ form {
 }
 
 .page-content {
-	font-size: 80%;
-	padding-top:1em;
-	padding-bottom:1em;
-	padding-left:2em;
-	margin-right:5em;
+#	font-size: 80%;
+#	padding-top:1em;
+#	padding-bottom:1em;
+#	padding-left:2em;
+#	margin-right:5em;
 
 }
 
@@ -91,15 +91,15 @@ form {
 
 .items-list 
 {
-	padding-top: 0;
-	padding-left: 2em;
-	margin-top: 0;
+#	padding-top: 0;
+#	padding-left: 2em;
+#	margin-top: 0;
 }
 
 .items-list li 
 {
-	margin-bottom:0.5em;
-	margin-top:0;
+#	margin-bottom:0.5em;
+#	margin-top:0;
 }
 
 
