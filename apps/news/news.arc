@@ -580,7 +580,7 @@
            (userstyle ,gu)
            (usertheme, gu)
            (gentag link "rel" "icon" "href" "/favicon.ico")
-           (gentag "meta" "name" "viewport" "value" "width=device-width")
+           (gentag "meta" "name" "viewport" "content" "width=device-width, initial-scale=1")
            (tag (script "type" "text/javascript" "src" "/news.js"))
            (tag title (pr (+ this-site* (if ,gt (+ bar* ,gt) "")))))
            (tag body 
