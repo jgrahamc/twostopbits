@@ -350,12 +350,15 @@
 (def acomment (i) (is i!type 'comment))
 (def apoll    (i) (is i!type 'poll))
 
+(def newtags (tl)
+    (each tg tl (insortnew < tg tags*)))
+
 (def load-item (id)
   (let i (temload 'item (+ storydir* id))
     (= (items* id) i)
     (awhen (and (astory&live i) (check i!url ~blank))
       (register-url i it))
-    (each tg (tokens (downcase i!tags)) (insortnew < tg tags*))
+    (newtags (tokens i!tags))
     i))
 
 ; Note that duplicates are only prevented of items that have at some
@@ -1716,7 +1719,7 @@
 		     'by user 'ip ip)
     (save-item s)
     (= (items* s!id) s)
-    (each tg tags-list (insortnew < tg tags*))
+    (newtags tags-list)
     (unless (blank url) (register-url s url))
     (push s stories*)
     s))
@@ -2078,6 +2081,7 @@
                         (save-item i)
                         (metastory&adjust-rank i)
                         (wipe (comment-cache* i!id))
+			(newtags (tokens i!tags))
                         (edit-item user i)))
       (hook 'edit user i))))
 
