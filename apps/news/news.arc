@@ -355,7 +355,7 @@
     (= (items* id) i)
     (awhen (and (astory&live i) (check i!url ~blank))
       (register-url i it))
-    (each tg i!tags (insortnew < tg tags*))
+    (each tg (tokens (downcase i!tags)) (insortnew < tg tags*))
     i))
 
 ; Note that duplicates are only prevented of items that have at some
@@ -813,7 +813,7 @@
   (keep [is _!deleted nil] (keep [tagged? _ tg] stories)))
 
 (def tagged? (story tg)
-  (some [is _ tg] story!tags))
+  (some [is _ tg] (tokens story!tags)))
 
 ;   Search bar for News
 ;   Copyright (C) 2017  Pelle Hjek
@@ -1264,7 +1264,8 @@
   (only.avg (map [or (uvar _ avg) 1]
                  (rem admin (dedup (map !by (keep live (family i))))))))
 
-(= user-changetime* 120 editor-changetime* 1440)
+(= user-changetime* 1209600 editor-changetime* 1440)
+; (= user-changetime* 120 editor-changetime* 1440)
 
 (= everchange* (table) noedit* (table))
 
@@ -1296,16 +1297,21 @@
   (tostring (link tg (+ "/tag?q=" tg))))
  
 (def storytags (s)
-  (when s!tags
+  (when (len> s!tags 0)
     (tag (span "class" "comhead sitebit")
       (pr " ")
-      (pr (map taglink s!tags)))))
+      (pr (map taglink (tokens s!tags))))))
 
 (def spaceplus (a b)
   (+ a " " b))
-  
+
+(def spacejoin (l)
+  (if (len< l 1) nil
+      (len< l 2) (car l)
+      (reduce spaceplus l)))
+
 (def knowntags ()
-  (reduce spaceplus tags*))
+  (spacejoin tags*))
 
 ; reset later
 
@@ -1588,7 +1594,7 @@
    toolong*     "Please make title < @title-limit* characters."
    tootags*     "Too many tags. Maximum is @tags-limit* tags."
    badtags*     "Tags can only contains letters (a-z) and numbers (0-9)."
-   longtag*     "Tags can't be more rthan tag-limit* characters each."
+   longtag*     "Tags can't be more than tag-limit* characters each."
    bothblank*   "The url and text fields can't both be blank.  Please
                  either supply a url, or if you're asking a question,
                  put it in the text field."
@@ -1705,7 +1711,8 @@
 (def create-story (url title text tags-list user ip)
   (newslog ip user 'create url (list title))
   (let s (inst 'item 'type 'story 'id (new-item-id)
-                     'url url 'title title 'text text 'tags tags-list
+                     'url url 'title title 'text text
+		     'tags (spacejoin tags-list)
 		     'by user 'ip ip)
     (save-item s)
     (= (items* s!id) s)
@@ -1713,7 +1720,6 @@
     (unless (blank url) (register-url s url))
     (push s stories*)
     s))
-
 
 ; Bans
 
@@ -2013,12 +2019,11 @@
 
 (= (fieldfn* 'story)
    (fn (user s)
-     (with (a (admin user)  e (editor user)  x (canedit user s)
-            tg (reduce spaceplus s!tags))
+     (with (a (admin user)  e (editor user)  x (canedit user s))
        `((string1 title     ,s!title                   t ,x)
          (url     url       ,s!url                     t ,e)
          (mdtext2 text      ,s!text                    t ,x)
-	 (string  tags      ,tg                        t ,x)
+	 (string  tags      ,s!tags                    t ,x)
          ,@(standard-item-fields s a e x)))))
 
 (= (fieldfn* 'comment)
@@ -2076,12 +2081,15 @@
                         (edit-item user i)))
       (hook 'edit user i))))
 
-; TODO add checking of the tags here
 ; TODO make saving tags work
 
 (def ignore-edit (user i name val)
   (case name title (len> val title-limit*)
-             dead  (and (mem 'nokill i!keys) (~admin user))))
+             dead  (and (mem 'nokill i!keys) (~admin user))
+	     tags  (let tags-list (tokens (downcase val))
+                     (or (len> tags-list tags-limit*)
+	                 (some [some ~alphadig _] tags-list)
+	                 (some [len> _ tag-limit*] tags-list)))))
 
 ; Comment Submission
 
