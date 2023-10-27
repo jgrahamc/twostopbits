@@ -583,7 +583,7 @@
            (userstyle ,gu)
            (usertheme, gu)
            (gentag link "rel" "icon" "href" "/favicon.ico")
-           (gentag "meta" "name" "viewport" "value" "width=device-width")
+           (gentag "meta" "name" "viewport" "content" "width=device-width, initial-scale=1.0")
            (tag (script "type" "text/javascript" "src" "/news.js"))
            (tag title (pr (+ this-site* (if ,gt (+ bar* ,gt) "")))))
            (tag body 
@@ -2078,14 +2078,13 @@
                        (log-kill i user))
                      (= (i name) val)))
                  (fn () (if (admin user) (pushnew 'locked i!keys))
+		        (= i!tags (downcase i!tags))
                         (save-item i)
                         (metastory&adjust-rank i)
                         (wipe (comment-cache* i!id))
 			(newtags (tokens i!tags))
                         (edit-item user i)))
       (hook 'edit user i))))
-
-; TODO make saving tags work
 
 (def ignore-edit (user i name val)
   (case name title (len> val title-limit*)
