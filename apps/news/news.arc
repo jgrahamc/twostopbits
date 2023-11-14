@@ -46,7 +46,7 @@
 ; TODO
 
 ;(declare 'direct-calls t)
-;(declare 'explicit-flush t)
+(declare 'explicit-flush t)
 
 (def vote-url (user i dir whence)
   (+ "vote?for=" i!id
@@ -102,7 +102,7 @@
   ip         nil
   time       (seconds)
   url        nil
-  archive-url nil
+  archiveurl nil
   title      nil
   text       nil
   votes      nil   ; elts each (time ip user type score)
@@ -1082,30 +1082,31 @@
             (tag (span "class" "comhead sitebit")
               (pr " ("
                   (tostring (link it (string "from?site=" (sitename url))))
-                  ") ")
-            )))
+ 	          (ia-archivelink s)
+		  ")")
+           )))
       (pr (pseudo-text s)))))
 
-; site archival
+; check the Internet Archive for the item (s) url, if it exists, store
+; the data locally and return whence, otherwise return a link to IA to
+; archive the url.
 
-; check the Internet Archive for the item (s) url, if it exists, store the data locally
-; and return whence, otherwise return a link to IA to archive the url. 
-(def set-ia-archive (s whence (o port stdin))
+(def set-ia-archive (s (o port stdin))
   (let arch (fromstring ((mkreq (string "https://archive.org/wayback/available?url=" s!url)) 1) (read-json (port)))
     (if (len> arch!archived_snapshots 0)
       (do
-        (= (s "archive-url") arch!archived_snapshots!closest!url
-           (items* s!id)     s)
-         whence)
-      (string "https://web.archive.org/save/" s!url))))
+        (= s!archiveurl arch!archived_snapshots!closest!url)
+        (save-item s)))))
 
-; display the archival link
-(def ia-archivelink (s whence)
-  (if (s "archive-url")
-    (tag ("a" "href" (s "archive-url")) (pr "archived"))
-    (tag ("a" "href" (rflink (fn (req)
-      (set-ia-archive s whence)))) 
-      (pr "archive"))))
+(def ia-archivelink (s)
+  (if s!archiveurl
+    (tostring (pr "/") (tag ("a" "href" s!archiveurl) (pr "ia")))
+    ""))
+
+(def update-ia-items ()
+  (each i (vals items*)
+    (if (and i!url (len> i!url 0) (no i!archiveurl))
+      (set-ia-archive i))))
 
 (def titlelink (s url user)
   (let toself (blank url)
