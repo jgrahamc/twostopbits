@@ -645,7 +645,10 @@
                     (when (admin, gu)
                       (page-createlink)
                       (pr " | "))
-                    (link "rss"))
+                    (link "rss")
+		    (pr " | ")
+                    (rlinkf 'logout (req)
+                      (when-umatch/r user req (logout-user user) "/")))
 		    
                   (if (bound 'search-bar) 
                     (search-bar ,gu))
@@ -860,9 +863,6 @@
         (underlink "comments" (threads-url subject)))
       (sp)
       (underlink "rss" "follow?subject=@subject")
-      (sp)
-      (rlinkf 'logout (req)
-        (when-umatch/r user req (logout-user user) "/"))
       (hook 'user user subject))))
       
 (def profile-form (user subject)
