@@ -623,13 +623,8 @@
                       (when showkarma* 
                         (pr (string " (" (karma ,gu) ") |")))
                       (pr "&nbsp;")
-                      (toplink "threads" (threads-url ,gu) ,gl)
-                      (pr "&nbsp;|&nbsp;"))
-                      (if ,gu
-                        (rlinkf 'logout (req)
-                          (when-umatch/r ,gu req
-                            (logout-user ,gu)
-                        ,gw))
+                      (toplink "threads" (threads-url ,gu) ,gl))
+                      (if (no ,gu)
                         (onlink "login"
                           (news-login-page nil
                                 (list (fn (u ip)
@@ -865,8 +860,11 @@
         (underlink "comments" (threads-url subject)))
       (sp)
       (underlink "rss" "follow?subject=@subject")
+      (sp)
+      (rlinkf 'logout (req)
+        (when-umatch/r user req (logout-user user) "/"))
       (hook 'user user subject))))
-
+      
 (def profile-form (user subject)
   (let prof (profile subject)
     (vars-form user
@@ -1576,7 +1574,7 @@
         (spacerow 20)
         (row "" submit-tags*)
         (spacerow 20)
-        (row "known tags"
+        (row "known tags (click to add to story)"
 	  (tab
 	    (let tgs (knowntags)
 	      (while tgs
