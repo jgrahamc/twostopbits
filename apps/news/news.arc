@@ -311,7 +311,7 @@
 (def author (u i) (is u i!by))
 
 (= stories* nil ranked-stories* nil comments* nil
-   items* (table) url->story* (table) tags* nil
+   items* (table) url->story* (table) tags* (table)
    maxid* 0 initload* 15000)
 
 ; The dir expression yields stories in order of file creation time
@@ -351,7 +351,10 @@
 (def apoll    (i) (is i!type 'poll))
 
 (def newtags (tl)
-    (each tg tl (insortnew < tg tags*)))
+    (each tg tl
+      (if (tags* tg)
+        (++ (tags* tg))
+	(= (tags* tg) 1))))
 
 (def load-item (id)
   (let i (temload 'item (+ storydir* id))
@@ -567,7 +570,7 @@
 (= pagefns* nil)
 
 ; page top
-(= toplabels* '(nil "welcome" "new" "threads" "comments" "ask" "*")
+(= toplabels* '(nil "welcome" "new" "threads" "comments" "tags" "ask" "*")
    showkarma* t)
 
 ;Other page templates have been deprecated and folded into this, which
@@ -607,6 +610,7 @@
                  (w/bars 
                    (toplink "new" "newest" ,gl)
                    (toplink "comments" "newcomments" ,gl)
+                   (toplink "tags" "tags" ,gl)
                    (toplink "ask" "ask" ,gl)
                    (link  "submit")))
                 
@@ -1100,12 +1104,12 @@
 
 (def ia-archivelink (s)
   (if s!archiveurl
-    (tostring (pr "/") (tag ("a" "href" s!archiveurl) (pr "ia")))
+    (tostring (pr "|") (tag ("a" "href" s!archiveurl) (pr "ia")))
     ""))
 
 (def update-ia-items ()
   (each i (vals items*)
-    (if (and i!url (len> i!url 0) (no i!archiveurl))
+    (if (and (is i!type 'story) i!url (len> i!url 0) (no i!archiveurl))
       (set-ia-archive i))))
 
 (def titlelink (s url user)
@@ -1299,7 +1303,10 @@
 
 (def taglink (tg)
   (tostring (link tg (+ "/tag?q=" tg))))
- 
+
+(def tdtag (tg)
+  (string "<td>" tg "</td>"))
+
 (def storytags (s)
   (when (len> s!tags 0)
     (tag (span "class" "comhead sitebit")
@@ -1315,7 +1322,7 @@
       (reduce spaceplus l)))
 
 (def knowntags ()
-  (spacejoin tags*))
+  (sort < (keys tags*)))
 
 ; reset later
 
@@ -1572,7 +1579,14 @@
         (spacerow 20)
         (row "" submit-tags*)
         (spacerow 20)
-        (row "known tags" (pr (knowntags)))))))
+        (row "known tags"
+	  (tab
+	    (let tgs (knowntags)
+	      (while tgs
+	        (pr "<tr>")
+	        (pr (spacejoin (map tdtag (firstn 10 tgs))))
+		(pr "</tr>")
+		(= tgs (nthcdr 10 tgs))))))))))
 
 (= submit-instructions*
    "Leave URL blank to submit a question for discussion. If there is
@@ -1616,7 +1630,7 @@
         (item-url it!id))
     ; NOTE: Here in Anarki, [...] without _ is nullary, so we're
     ; using (fn (_) (...)) instead.
-    (let tags-list (tokens (downcase tags))
+    (let tags-list (dedup (tokens (downcase tags)))
       (if (no user)
            (flink [submit-login-warning url title tags showtext text _])
           (no (and (or (blank url) (valid-url url))
@@ -2079,7 +2093,8 @@
                        (log-kill i user))
                      (= (i name) val)))
                  (fn () (if (admin user) (pushnew 'locked i!keys))
-		        (= i!tags (downcase i!tags))
+		        (= i!tags (spacejoin
+			            (dedup (tokens (downcase i!tags)))))
                         (save-item i)
                         (metastory&adjust-rank i)
                         (wipe (comment-cache* i!id))
@@ -2090,7 +2105,7 @@
 (def ignore-edit (user i name val)
   (case name title (len> val title-limit*)
              dead  (and (mem 'nokill i!keys) (~admin user))
-	     tags  (let tags-list (tokens (downcase val))
+	     tags  (let tags-list (dedup (tokens (downcase val)))
                      (or (len> tags-list tags-limit*)
 	                 (some [some ~alphadig _] tags-list)
 	                 (some [len> _ tag-limit*] tags-list)))))
@@ -2439,6 +2454,21 @@
 (def leading-users ()
   (sort (compare > [karma _])
         (users [and (> (karma _) leader-threshold*) (~admin _)])))
+	
+(newsop tags () (tagspage user))
+
+(= ntags* 50)
+
+(newscache tagspage user 1000
+  (longpage user "tags" "Tags" "tags"
+    (sptab
+      (let i 0
+        (each t (firstn ntags* (popular-tags))
+          (tr (tdr:pr (taglink t) " " (tags* t))
+          (if (is (mod (++ i) 10) 0) (spacerow 30))))))))
+
+(def popular-tags ()
+  (keys (sortable tags* >)))
 
 (adop editors ()
   (tab (each u (users [is (uvar _ auth) 1])
