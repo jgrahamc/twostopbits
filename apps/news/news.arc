@@ -1300,7 +1300,7 @@
   (tostring (link tg (+ "/tag?q=" tg))))
 
 (def tdtag (tg)
-  (string "<td>" tg "</td>"))
+  (string "<td class=\"hovertag\">" tg "</td>"))
 
 (def storytags (s)
   (when (len> s!tags 0)
@@ -1575,13 +1575,24 @@
         (row "" submit-tags*)
         (spacerow 20)
         (row "known tags (click to add to story)"
-	  (tab
-	    (let tgs (knowntags)
-	      (while tgs
-	        (pr "<tr>")
-	        (pr (spacejoin (map tdtag (firstn 10 tgs))))
-		(pr "</tr>")
-		(= tgs (nthcdr 10 tgs))))))))))
+	  (tag (div name "known")
+	    (tab
+	      (let tgs (knowntags)
+	        (while tgs
+	          (pr "<tr>")
+	          (pr (spacejoin (map tdtag (firstn 10 tgs))))
+		  (pr "</tr>")
+		  (= tgs (nthcdr 10 tgs)))))))))
+        (pr "<script>document.addEventListener(\"DOMContentLoaded\", function () {\
+    var known = document.getElementsByName(\"known\")[0]; \
+    var tags = document.getElementsByName(\"tg\")[0]; \
+    if (known) {\
+      known.addEventListener(\"click\", function (event) {\
+        if (event.target.tagName === \"TD\") {\
+          var clicked = event.target.textContent.trim();\
+          if (tags.value.split(\" \").indexOf(clicked) === -1) {\
+            tags.value += (tags.value.length > 0?\" \":\"\") + clicked;\
+          }}});}});</script>")))
 
 (= submit-instructions*
    "Leave URL blank to submit a question for discussion. If there is
