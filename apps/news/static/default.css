@@ -1,3 +1,4 @@
+
 body  { font-family:Verdana, Geneva, sans-serif; font-size:10pt; }
 
 a:link { text-decoration:none; color:#828282; }
@@ -10,7 +11,7 @@ a:visited { text-decoration:none; color:#000000; }
 }
 
 .hovertag:hover {
-    font-weight:bold;
+    text-decoration: underline;
 }
 
 form {
