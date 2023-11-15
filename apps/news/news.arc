@@ -647,8 +647,12 @@
                       (pr " | "))
                     (link "rss")
 		    (pr " | ")
-                    (rlinkf 'logout (req)
-                      (when-umatch/r user req (logout-user user) "/")))
+		    (link "source" "https://github.com/jgrahamc/twostopbits")
+		    (if user
+		      (do
+    		        (pr " | ")
+                        (rlinkf 'logout (req)
+                          (when-umatch/r user req (logout-user user) "/")))))
 		    
                   (if (bound 'search-bar) 
                     (search-bar ,gu))
