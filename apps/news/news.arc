@@ -624,10 +624,7 @@
                         (pr (string " (" (karma ,gu) ") |")))
                       (pr "&nbsp;")
                       (toplink "threads" (threads-url ,gu) ,gl)
-                      (pr "&nbsp;|&nbsp;")
-                      (when (and ,gu (> (karma ,gu) poll-threshold*))
-                        (toplink "poll" "newpoll" ,gl)
-                        (pr "&nbsp;|&nbsp;")))
+                      (pr "&nbsp;|&nbsp;"))
                       (if ,gu
                         (rlinkf 'logout (req)
                           (when-umatch/r ,gu req
@@ -1828,10 +1825,10 @@
 
 (= poll-threshold* 20)
 
-(newsop newpoll ()
-  (if (and user (> (karma user) poll-threshold*))
-    (newpoll-page user)
-    (pr "Sorry, you need @poll-threshold* karma to create a poll.")))
+;(newsop newpoll ()
+;  (if (and user (> (karma user) poll-threshold*))
+;    (newpoll-page user)
+;    (pr "Sorry, you need @poll-threshold* karma to create a poll.")))
 
 (def newpoll-page (user (o title "Poll: ") (o text "") (o opts "") (o msg)
                         (o req)) ; unused
