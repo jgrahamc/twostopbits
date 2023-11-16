@@ -350,6 +350,12 @@
 (def acomment (i) (is i!type 'comment))
 (def apoll    (i) (is i!type 'poll))
 
+(def oldtags (tl)
+  (each tg tl
+    (if (tags* tg)
+       (if (is (-- (tags* tg)) 0)
+         (= (tags* tg) nil)))))
+
 (def newtags (tl)
     (each tg tl
       (if (tags* tg)
@@ -361,7 +367,8 @@
     (= (items* id) i)
     (awhen (and (astory&live i) (check i!url ~blank))
       (register-url i it))
-    (newtags (tokens i!tags))
+    (if (live i) 
+      (newtags (tokens i!tags)))
     i))
 
 ; Note that duplicates are only prevented of items that have at some
@@ -2101,8 +2108,14 @@
                    (unless (ignore-edit user i name val)
                      (when (and (is name 'dead) val (no i!dead))
                        (log-kill i user))
+		     (if (and (is name 'tags) (no i!oldtags))
+		       (= i!oldtags i!tags))
                      (= (i name) val)))
                  (fn () (if (admin user) (pushnew 'locked i!keys))
+	                (if (len> i!oldtags 0)
+			  (do 
+			    (oldtags (tokens i!oldtags))
+			    (= i!oldtags nil)))
 		        (= i!tags (spacejoin
 			            (dedup (tokens (downcase i!tags)))))
                         (save-item i)
