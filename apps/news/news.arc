@@ -1114,9 +1114,15 @@
     ""))
 
 (def update-ia-items ()
-  (each i (vals items*)
-    (if (and (is i!type 'story) i!url (len> i!url 0) (no i!archiveurl))
-      (set-ia-archive i))))
+  (each k (sort >
+            (trues
+	      (fn (_)
+               (if (and (is _!type 'story)
+		         _!url
+			 (len> _!url 0)
+			 (no _!archiveurl))
+                   _!id)) (vals items*)))
+    (set-ia-archive (items* k))))
 
 (def titlelink (s url user)
   (let toself (blank url)
