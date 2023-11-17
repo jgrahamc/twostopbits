@@ -1110,7 +1110,7 @@
 
 (def ia-archivelink (s)
   (if s!archiveurl
-    (tostring (pr "|") (tag ("a" "href" s!archiveurl) (pr "ia")))
+    (tostring (pr " | ") (tag ("a" "href" s!archiveurl) (pr "ia")))
     ""))
 
 (def update-ia-items ()
