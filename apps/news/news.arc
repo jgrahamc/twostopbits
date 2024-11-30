@@ -2448,6 +2448,7 @@
               (tag title    (pr (eschtml s!title)
                                 (aif (sitename s!url) (+ " (" it ")") "")))
               (tag link     (pr (if (blank s!url) comurl (eschtml s!url))))
+	      (tag pubDate  (pr (rfc822 s!time)))
               (tag comments (pr comurl))
               (tag description
                 (cdata (link "Comments" comurl)))))))))
