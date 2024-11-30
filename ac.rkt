@@ -25,6 +25,7 @@
   racket/string
   racket/random
   racket/struct
+  racket/date
 
   (only-in "brackets.rkt" bracket-readtable)
 
@@ -1852,6 +1853,12 @@ Arc 3.2 documentation: https://arclanguage.github.io/ref.
                         (date-day d)
                         (date-month d)
                         (date-year d))))))
+
+(date-display-format 'rfc2822)
+
+(xdef rfc822
+  (lambda (t)
+    (date->string (seconds->date t) #t)))
 
 (xdef utf-8-bytes
   (lambda (str)
