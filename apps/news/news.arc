@@ -826,6 +826,19 @@
                (admin&newsadmin-page user)))
       (single-input "" 'ip 20 "ban ip"))))
 
+(newsop year (q)
+  (year-page user q))
+
+(def year-page (user yr)
+  (listpage user (yearmatch stories* yr) "year"
+    (string "Stories with year \"" yr #\")))
+
+(def yearmatch (stories yr)
+  (keep [is _!deleted nil] (keep [yearis? _ yr] stories)))
+
+(def yearis? (story yr)
+  (is story!year yr))
+
 (newsop tag (q)
   (tag-page user q))
 
@@ -1340,7 +1353,7 @@
 (def storyyear (s)
   (if (~blank s!year)
     (tag (span "class" "comhead sitebit")
-      (pr " (" s!year ")"))))
+      (pr " (" (tostring (link s!year (+ "/year?q=" s!year))) ")"))))
 
 (def spaceplus (a b)
   (+ a " " b))
