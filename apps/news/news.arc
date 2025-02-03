@@ -115,7 +115,8 @@
   parent     nil
   kids       nil
   keys       nil
-  tags       nil)
+  tags       nil
+  year       nil)
 
 (deftem page 
   id 0
@@ -367,8 +368,18 @@
     (= (items* id) i)
     (awhen (and (astory&live i) (check i!url ~blank))
       (register-url i it))
-    (if (live i) 
-      (newtags (tokens i!tags)))
+    (when (astory&live i)
+      (newtags (tokens i!tags))
+      (if (blank i!year)
+        (let t (tokens i!title)
+	  (if (len> t 1)
+	    (let lat (last t)
+	      (if (and (is (len lat) 6) (headmatch "(" lat) (endmatch ")" lat))
+	        (let yr (cut lat 1 5)
+		  (when (validyear yr)
+		    (= i!year yr)
+		    (= i!title (cut i!title 0 (- (len i!title) 7)))
+		    (save-item i)))))))))
     i))
 
 ; Note that duplicates are only prevented of items that have at some
@@ -1087,6 +1098,7 @@
     (if (cansee user s)
       (do (deadmark s user)
           (titlelink s url user)
+	  (storyyear s)
 	  (storytags s)
           (awhen (sitename url)
             (tag (span "class" "comhead sitebit")
@@ -1325,6 +1337,11 @@
       (pr " ")
       (pr (map taglink (tokens s!tags))))))
 
+(def storyyear (s)
+  (if (~blank s!year)
+    (tag (span "class" "comhead sitebit")
+      (pr " (" s!year ")"))))
+
 (def spaceplus (a b)
   (+ a " " b))
 
@@ -1546,36 +1563,37 @@
 (def recent-votes-by (user)
   (keep [is _.3 user] recent-votes*))
 
-
 ; Story Submission
 
 (newsop submit ()
   (if user
-    (submit-page user "" "" "" t)
-    (submit-login-warning "" "" "" t)))
+    (submit-page user "" "" "" "" t)
+    (submit-login-warning "" "" "" "" t)))
 
-(def submit-login-warning ((o url) (o title) (o tags) (o showtext) (o text)
-                           (o req)) ; unused
+(def submit-login-warning ((o url) (o title) (o year) (o tags) (o showtext)
+                           (o text) (o req))
   (news-login-page "You have to be logged in to submit."
               (fn (user ip)
                 (ensure-news-user user)
                 (newslog ip user 'submit-login)
-                (submit-page user url title tags showtext text))))
+                (submit-page user url title year tags showtext text))))
 
-(def submit-page (user (o url) (o title) (o tags) (o showtext) (o text "")
-     		       (o msg) (o req)) ; unused
+(def submit-page (user (o url) (o title) (o year) (o tags) (o showtext)
+                       (o text "")  (o msg) (o req))
   (longpage user "Submit" (+ this-site* bar* "Submit") "/"
     (pagemessage msg)
     (urform user req
             (process-story (get-user req)
                            (clean-url (arg req "u"))
                            (striptags (arg req "t"))
+			   (striptags (arg req "y"))
 			   (striptags (arg req "tg"))
                            showtext
                            (and showtext (md-from-form (arg req "x") t))
                            req!ip)
       (tab
         (row "title"  (input "t" title 50))
+	(row "year (optional)" (input "y" year 4))
         (if prefer-url*
           (do (row "url" (input "u" url 50))
               (when showtext
@@ -1640,14 +1658,15 @@
                  either supply a url, or if you're asking a question,
                  put it in the text field."
    toofast*     "You're submitting too fast.  Please slow down.  Thanks."
-   spammage*    "Stop spamming us.  You're wasting your time.")
+   spammage*    "Stop spamming us.  You're wasting your time."
+   badyear*     "Year must be between 1000 and 9999")
 
 ; Only for annoyingly high-volume spammers. For ordinary spammers it's
 ; enough to ban their sites and ip addresses.
 
 (disktable big-spamsites* (+ newsdir* "big-spamsites"))
 
-(def process-story (user url title tags showtext text ip)
+(def process-story (user url title year tags showtext text ip)
   (aif (and (~blank url) (live-story-w/url url))
     (do (vote-for user it)
         (item-url it!id))
@@ -1658,29 +1677,37 @@
            (flink [submit-login-warning url title tags showtext text _])
           (no (and (or (blank url) (valid-url url))
                  (~blank title)))
-           (flink [submit-page user url title tags showtext text retry* _])
+           (flink [submit-page user url title year tags showtext text retry* _])
           (len> title title-limit*)
-           (flink [submit-page user url title tags showtext text toolong* _])
+           (flink [submit-page user url title year tags showtext text toolong* _])
           (and (blank url) (blank text))
-           (flink [submit-page user url title tags showtext text bothblank* _])
+           (flink [submit-page user url title year tags showtext text bothblank* _])
   	  (len> tags-list tags-limit*)
-           (flink [submit-page user url title tags showtext text tootags* _])
+           (flink [submit-page user url title year tags showtext text tootags* _])
 	  (some [some ~alphadig _] tags-list)
-           (flink [submit-page user url title tags showtext text badtags* _])
+           (flink [submit-page user url title year tags showtext text badtags* _])
 	  (some [len> _ tag-limit*] tags-list)
-           (flink [submit-page user url title tags showtext text longtag* _])
+           (flink [submit-page user url title year tags showtext text longtag* _])
+	  (~validyear year)
+           (flink [submit-page user url title year tags showtext text badyear* _])
           (let site (sitename url)
             (or (big-spamsites* site) (recent-spam site)))
            (flink:fn (_) (msgpage user spammage*))
           (oversubmitting user ip 'story url)
            (flink:fn (_) (msgpage user toofast*))
-          (let s (create-story url (process-title title) text tags-list
+          (let s (create-story url (process-title title) year text tags-list
 	                       user ip)
             (story-ban-test user s ip url)
             (when (ignored user) (kill s 'ignored))
             (submit-item user s)
             (maybe-ban-ip s)
             "newest")))))
+
+(def validyear (year)
+  (or
+    (blank year)
+    (errsafe (let y (int year)
+      (and (< y 10000) (> y 999))))))
 
 (def submit-item (user i)
   (push i!id (uvar user submitted))
@@ -1749,11 +1776,12 @@
                    ; "sampasite"  "multiply" "wetpaint" ; all spam, just ban
                    "eurekster" "blogsome" "edogo" "blog" "com"))
 
-(def create-story (url title text tags-list user ip)
+(def create-story (url title year text tags-list user ip)
   (newslog ip user 'create url (list title))
   (let s (inst 'item 'type 'story 'id (new-item-id)
                      'url url 'title title 'text text
 		     'tags (spacejoin tags-list)
+		     'year year
 		     'by user 'ip ip)
     (save-item s)
     (= (items* s!id) s)
@@ -2064,6 +2092,7 @@
        `((string1 title     ,s!title                   t ,x)
          (url     url       ,s!url                     t ,e)
          (mdtext2 text      ,s!text                    t ,x)
+	 (string  year      ,s!year                    t ,x)
 	 (string  tags      ,s!tags                    t ,x)
          ,@(standard-item-fields s a e x)))))
 
@@ -2134,6 +2163,7 @@
 (def ignore-edit (user i name val)
   (case name title (len> val title-limit*)
              dead  (and (mem 'nokill i!keys) (~admin user))
+	     year  (~validyear val)
 	     tags  (let tags-list (dedup (tokens (downcase val)))
                      (or (len> tags-list tags-limit*)
 	                 (some [some ~alphadig _] tags-list)
