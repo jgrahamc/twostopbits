@@ -839,6 +839,13 @@
 (def yearis? (story yr)
   (is story!year yr))
 
+(newsop notags ()
+  (listpage user (untagged stories*) "notags"
+    (string "Stories with no tags")))
+
+(def untagged (stories)
+  (keep [is _!deleted nil] (keep [blank _!tags] stories)))
+
 (newsop tag (q)
   (tag-page user q))
 
