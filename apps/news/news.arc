@@ -1377,7 +1377,7 @@
   (sort < (keys tags*)))
 
 (def frequently-used-tags() ()
-  (keep (fn (_) (> (tags* _) 9)) (knowntags)))
+  (keep (fn (_) (> (tags* _) 4)) (knowntags)))
 
 ; reset later
 
@@ -1664,7 +1664,7 @@
 
 (= submit-tags* 
    "Tags can contain a-z0-9. Tags must be space-separated. Maximum of
-    @tags-limit* tags. Currently known tags with more than 10 stories
+    @tags-limit* tags. Currently known tags with more than 5 stories
     are shown below. Feel free to add new ones. Prefer short tags over
     long ones (e.g. c64 better than commodore64).")
 
