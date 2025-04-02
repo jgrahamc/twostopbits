@@ -361,7 +361,7 @@
     (each tg tl
       (if (tags* tg)
         (++ (tags* tg))
-	(= (tags* tg) 1))))
+        (= (tags* tg) 1))))
 
 (def load-item (id)
   (let i (temload 'item (+ storydir* id))
@@ -372,14 +372,14 @@
       (newtags (tokens i!tags))
       (if (blank i!year)
         (let t (tokens i!title)
-	  (if (len> t 1)
-	    (let lat (last t)
-	      (if (and (is (len lat) 6) (headmatch "(" lat) (endmatch ")" lat))
-	        (let yr (cut lat 1 5)
-		  (when (validyear yr)
-		    (= i!year yr)
-		    (= i!title (cut i!title 0 (- (len i!title) 7)))
-		    (save-item i)))))))))
+          (if (len> t 1)
+            (let lat (last t)
+              (if (and (is (len lat) 6) (headmatch "(" lat) (endmatch ")" lat))
+                (let yr (cut lat 1 5)
+                  (when (validyear yr)
+                    (= i!year yr)
+                    (= i!title (cut i!title 0 (- (len i!title) 7)))
+                    (save-item i)))))))))
     i))
 
 ; Note that duplicates are only prevented of items that have at some
@@ -664,21 +664,21 @@
                       (page-createlink)
                       (pr " | "))
                     (link "rss")
-		    (pr " | ")
-		    (link "source" "https://github.com/jgrahamc/twostopbits")
-		    (if ,gu
-		      (do
-    		        (pr " | ")
+                    (pr " | ")
+                    (link "source" "https://github.com/jgrahamc/twostopbits")
+                    (if ,gu
+                      (do
+                            (pr " | ")
                         (rlinkf 'logout (req)
                           (when-umatch/r ,gu req (logout-user ,gu) "/")))))
-		    
+                    
                   (if (bound 'search-bar) 
                     (search-bar ,gu))
 
-		    (tag ("span")
-		      (pr "Two Stop Bits is a discussion web site about retro computing and gaming."))
+                    (tag ("span")
+                      (pr "Two Stop Bits is a discussion web site about retro computing and gaming."))
                   
-		    (when (admin ,gu)
+                    (when (admin ,gu)
                       (br2)
                       (w/bars
                         (pr (len items*) "/" maxid* " loaded")
@@ -1118,14 +1118,14 @@
     (if (cansee user s)
       (do (deadmark s user)
           (titlelink s url user)
-	  (storyyear s)
-	  (storytags s)
+          (storyyear s)
+          (storytags s)
           (awhen (sitename url)
             (tag (span "class" "comhead sitebit")
               (pr " ("
                   (tostring (link it (string "from?site=" (sitename url))))
- 	          (ia-archivelink s)
-		  ")")
+                   (ia-archivelink s)
+                  ")")
            )))
       (pr (pseudo-text s)))))
 
@@ -1148,13 +1148,16 @@
 (def update-ia-items ()
   (each k (sort >
             (trues
-	      (fn (_)
+              (fn (_)
                (if (and (is _!type 'story)
-		         _!url
-			 (len> _!url 0)
-			 (no _!archiveurl))
+                         _!url
+                         (len> _!url 0)
+                         (no _!archiveurl))
                    _!id)) (vals items*)))
     (set-ia-archive (items* k))))
+
+(defbg update-ia-daily 1440
+  (update-ia-items))
 
 (def titlelink (s url user)
   (let toself (blank url)
@@ -1191,7 +1194,7 @@
                         (canvote user i 'down))
                (votelink-down i user whence)))
         (author user i) (do (fontcolor orange (pr "*")) (br) (tag (img src "s.gif" width 14)))
-	(tag (img src "s.gif" width 14))
+        (tag (img src "s.gif" width 14))
 )))
 
 ; could memoize votelink more, esp for non-logged in users,
@@ -1372,6 +1375,9 @@
 
 (def knowntags ()
   (sort < (keys tags*)))
+
+(def frequently-used-tags() ()
+  (keep (fn (_) (> (tags* _) 9)) (knowntags)))
 
 ; reset later
 
@@ -1606,14 +1612,14 @@
             (process-story (get-user req)
                            (clean-url (arg req "u"))
                            (striptags (arg req "t"))
-			   (striptags (arg req "y"))
-			   (striptags (arg req "tg"))
+                           (striptags (arg req "y"))
+                           (striptags (arg req "tg"))
                            showtext
                            (and showtext (md-from-form (arg req "x") t))
                            req!ip)
       (tab
         (row "title"  (input "t" title 50))
-	(row "year (optional)" (input "y" year 4))
+        (row "year (optional)" (input "y" year 4))
         (if prefer-url*
           (do (row "url" (input "u" url 50))
               (when showtext
@@ -1629,15 +1635,15 @@
         (spacerow 20)
         (row "" submit-tags*)
         (spacerow 20)
-        (row "known tags (click to add to story)"
-	  (tag (div name "known")
-	    (tab
-	      (let tgs (knowntags)
-	        (while tgs
-	          (pr "<tr>")
-	          (pr (spacejoin (map tdtag (firstn 10 tgs))))
-		  (pr "</tr>")
-		  (= tgs (nthcdr 10 tgs)))))))))
+        (row "popular tags (click to add to story)"
+          (tag (div name "known")
+            (tab
+              (let tgs (frequently-used-tags)
+                (while tgs
+                  (pr "<tr>")
+                  (pr (spacejoin (map tdtag (firstn 10 tgs))))
+                  (pr "</tr>")
+                  (= tgs (nthcdr 10 tgs)))))))))
         (pr "<script>document.addEventListener(\"DOMContentLoaded\", function () {\
     var known = document.getElementsByName(\"known\")[0]; \
     var tags = document.getElementsByName(\"tg\")[0]; \
@@ -1658,9 +1664,9 @@
 
 (= submit-tags* 
    "Tags can contain a-z0-9. Tags must be space-separated. Maximum of
-    @tags-limit* tags. Currently known tags are shown below. Feel free to add
-    new ones. Prefer short tags over long ones (e.g. c64 better than
-    commodore64).")
+    @tags-limit* tags. Currently known tags with more than 10 stories
+    are shown below. Feel free to add new ones. Prefer short tags over
+    long ones (e.g. c64 better than commodore64).")
 
 (newsop submitlink (u t)
   (if user
@@ -1702,13 +1708,13 @@
            (flink [submit-page user url title year tags showtext text toolong* _])
           (and (blank url) (blank text))
            (flink [submit-page user url title year tags showtext text bothblank* _])
-  	  (len> tags-list tags-limit*)
+            (len> tags-list tags-limit*)
            (flink [submit-page user url title year tags showtext text tootags* _])
-	  (some [some ~alphadig _] tags-list)
+          (some [some ~alphadig _] tags-list)
            (flink [submit-page user url title year tags showtext text badtags* _])
-	  (some [len> _ tag-limit*] tags-list)
+          (some [len> _ tag-limit*] tags-list)
            (flink [submit-page user url title year tags showtext text longtag* _])
-	  (~validyear year)
+          (~validyear year)
            (flink [submit-page user url title year tags showtext text badyear* _])
           (let site (sitename url)
             (or (big-spamsites* site) (recent-spam site)))
@@ -1716,7 +1722,7 @@
           (oversubmitting user ip 'story url)
            (flink:fn (_) (msgpage user toofast*))
           (let s (create-story url (process-title title) year text tags-list
-	                       user ip)
+                               user ip)
             (story-ban-test user s ip url)
             (when (ignored user) (kill s 'ignored))
             (submit-item user s)
@@ -1800,9 +1806,9 @@
   (newslog ip user 'create url (list title))
   (let s (inst 'item 'type 'story 'id (new-item-id)
                      'url url 'title title 'text text
-		     'tags (spacejoin tags-list)
-		     'year year
-		     'by user 'ip ip)
+                     'tags (spacejoin tags-list)
+                     'year year
+                     'by user 'ip ip)
     (save-item s)
     (= (items* s!id) s)
     (newtags tags-list)
@@ -2112,8 +2118,8 @@
        `((string1 title     ,s!title                   t ,x)
          (url     url       ,s!url                     t ,e)
          (mdtext2 text      ,s!text                    t ,x)
-	 (string  year      ,s!year                    t ,x)
-	 (string  tags      ,s!tags                    t ,x)
+         (string  year      ,s!year                    t ,x)
+         (string  tags      ,s!tags                    t ,x)
          ,@(standard-item-fields s a e x)))))
 
 (= (fieldfn* 'comment)
@@ -2163,31 +2169,31 @@
                    (unless (ignore-edit user i name val)
                      (when (and (is name 'dead) val (no i!dead))
                        (log-kill i user))
-		     (if (and (is name 'tags) (no i!oldtags))
-		       (= i!oldtags i!tags))
+                     (if (and (is name 'tags) (no i!oldtags))
+                       (= i!oldtags i!tags))
                      (= (i name) val)))
                  (fn () (if (admin user) (pushnew 'locked i!keys))
-	                (if (len> i!oldtags 0)
-			  (do 
-			    (oldtags (tokens i!oldtags))
-			    (= i!oldtags nil)))
-		        (= i!tags (spacejoin
-			            (dedup (tokens (downcase i!tags)))))
+                        (if (len> i!oldtags 0)
+                          (do 
+                            (oldtags (tokens i!oldtags))
+                            (= i!oldtags nil)))
+                        (= i!tags (spacejoin
+                                    (dedup (tokens (downcase i!tags)))))
                         (save-item i)
                         (metastory&adjust-rank i)
                         (wipe (comment-cache* i!id))
-			(newtags (tokens i!tags))
+                        (newtags (tokens i!tags))
                         (edit-item user i)))
       (hook 'edit user i))))
 
 (def ignore-edit (user i name val)
   (case name title (len> val title-limit*)
              dead  (and (mem 'nokill i!keys) (~admin user))
-	     year  (~validyear val)
-	     tags  (let tags-list (dedup (tokens (downcase val)))
+             year  (~validyear val)
+             tags  (let tags-list (dedup (tokens (downcase val)))
                      (or (len> tags-list tags-limit*)
-	                 (some [some ~alphadig _] tags-list)
-	                 (some [len> _ tag-limit*] tags-list)))))
+                         (some [some ~alphadig _] tags-list)
+                         (some [len> _ tag-limit*] tags-list)))))
 
 ; Comment Submission
 
@@ -2498,7 +2504,7 @@
               (tag title    (pr (eschtml s!title)
                                 (aif (sitename s!url) (+ " (" it ")") "")))
               (tag link     (pr (if (blank s!url) comurl (eschtml s!url))))
-	      (tag pubDate  (pr (rfc822 s!time)))
+              (tag pubDate  (pr (rfc822 s!time)))
               (tag comments (pr comurl))
               (tag description
                 (cdata (link "Comments" comurl)))))))))
@@ -2534,7 +2540,7 @@
 (def leading-users ()
   (sort (compare > [karma _])
         (users [and (> (karma _) leader-threshold*) (~admin _)])))
-	
+        
 (newsop tags () (tagspage user))
 
 (= ntags* 50)
@@ -2549,6 +2555,43 @@
 
 (def popular-tags ()
   (keys (sortable tags* >)))
+
+(def merge-tag (target-tag source-tag)
+  (let modified 0
+    ; Convert to lowercase for case insensitivity
+    (= target-tag (downcase target-tag)
+       source-tag (downcase source-tag))
+    
+    (prn "Merging tag \"" source-tag "\" into \"" target-tag "\"...")
+    
+    ; Update the items
+    (each-loaded-item i
+      (when (and (in i!type 'story 'poll) 
+                 (tagged? i source-tag))
+        (++ modified)
+        (prn "Updating item " i!id " - " i!title "...")
+        
+        (let current-tags (tokens i!tags)
+          (prn current-tags)
+        (let new-tags (dedup (cons target-tag (rem [is _ source-tag] current-tags)))
+          (prn new-tags)
+          
+          (if (tags* source-tag)
+            (when (is (-- (tags* source-tag)) 0)
+            (= (tags* source-tag) nil)))
+
+          (prn target-tag)
+          
+          (unless (mem target-tag current-tags)
+            (if (tags* target-tag)
+                (++ (tags* target-tag))
+                (= (tags* target-tag) 1)))
+          
+          (= i!tags (spacejoin new-tags))
+          (save-item i)))))
+    
+    (pr "\nMerge complete. Modified " modified " items.")
+    modified))
 
 (adop editors ()
   (tab (each u (users [is (uvar _ auth) 1])
