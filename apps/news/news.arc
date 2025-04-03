@@ -1628,7 +1628,9 @@
           (do (row "text" (textarea "x" 4 50 (only.pr text)))
               (row "" "<b>or</b>")
               (row "url" (input "u" url 50))))
-        (row "tags" (input "tg" tags 30))
+        (row "tags" (pr (string "<input name=\"tg\" id=\"tag-input\" value=\"" tags "\" size=\"30\" autocomplete=\"off\"
+	                          autocorrect=\"off\" autocapitalize=\"off\" spellcheck=\"false\">
+                                <div id=\"tag-suggestions\" class=\"tag-suggestions\"></div>")))
         (row "" (submit))
         (spacerow 20)
         (row "" submit-instructions*)
@@ -1644,16 +1646,159 @@
                   (pr (spacejoin (map tdtag (firstn 10 tgs))))
                   (pr "</tr>")
                   (= tgs (nthcdr 10 tgs)))))))))
-        (pr "<script>document.addEventListener(\"DOMContentLoaded\", function () {\
-    var known = document.getElementsByName(\"known\")[0]; \
-    var tags = document.getElementsByName(\"tg\")[0]; \
-    if (known) {\
-      known.addEventListener(\"click\", function (event) {\
-        if (event.target.tagName === \"TD\") {\
-          var clicked = event.target.textContent.trim();\
-          if (tags.value.split(\" \").indexOf(clicked) === -1) {\
-            tags.value += (tags.value.length > 0?\" \":\"\") + clicked;\
-          }}});}});</script>")))
+      (pr "<style>
+            .tag-suggestions {
+              position: absolute;
+              background: white;
+              border: 1px solid #ccc;
+              max-height: 200px;
+              overflow-y: auto;
+              display: none;
+              z-index: 100;
+              box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+            }
+            .tag-suggestion-item {
+              padding: 5px 10px;
+              cursor: pointer;
+            }
+            .tag-suggestion-item:hover, .tag-suggestion-item.selected {
+              background-color: #f0f0f0;
+            }
+          </style>")
+      (pr "<script>
+document.addEventListener('DOMContentLoaded', function() {
+  var tagInput = document.getElementById('tag-input');
+  var suggestionsDiv = document.getElementById('tag-suggestions');
+  var knownTagsDiv = document.getElementsByName('known')[0];
+  var allTags = [" (tostring (apply pr (intersperse ", " (map [+ "\"" _ "\""] (knowntags))))) "];
+  var selectedIndex = -1;
+
+  // Click to add tags
+  if (knownTagsDiv) {
+    knownTagsDiv.addEventListener('click', function(event) {
+      if (event.target.tagName === 'TD') {
+        var clicked = event.target.textContent.trim();
+        addTag(clicked);
+      }
+    });
+  }
+
+function addTag(tag) {
+    var currentTags = tagInput.value.trim().split(/\\s+/);
+    if (currentTags.indexOf(tag) === -1) {
+      if (tagInput.value.length > 0 && tagInput.value[tagInput.value.length - 1] !== ' ') {
+        tagInput.value += ' ';
+      }
+      tagInput.value += tag + ' ';
+    }
+    tagInput.focus();
+  }
+
+  // Tag autocomplete
+  tagInput.addEventListener('input', showSuggestions);
+  tagInput.addEventListener('keydown', handleKeydown);
+  document.addEventListener('click', function(e) {
+    if (e.target !== suggestionsDiv && !suggestionsDiv.contains(e.target)) {
+      suggestionsDiv.style.display = 'none';
+    }
+  });
+
+  function getCurrentTag() {
+    var cursorPos = tagInput.selectionStart;
+    var inputValue = tagInput.value;
+    var leftPart = inputValue.slice(0, cursorPos);
+    var startPos = leftPart.lastIndexOf(' ') + 1;
+    return leftPart.slice(startPos);
+  }
+
+  function showSuggestions() {
+    var currentTag = getCurrentTag();
+    if (currentTag.length < 1) {
+      suggestionsDiv.style.display = 'none';
+      return;
+    }
+
+    var matches = allTags.filter(function(tag) {
+      return tag.toLowerCase().startsWith(currentTag.toLowerCase());
+    });
+
+    if (matches.length === 0) {
+      suggestionsDiv.style.display = 'none';
+      return;
+    }
+
+    suggestionsDiv.innerHTML = '';
+    matches.forEach(function(tag) {
+      var div = document.createElement('div');
+      div.className = 'tag-suggestion-item';
+      div.textContent = tag;
+      div.addEventListener('click', function() {
+        insertTag(tag);
+      });
+      suggestionsDiv.appendChild(div);
+    });
+
+    suggestionsDiv.style.display = 'block';
+    suggestionsDiv.style.width = tagInput.offsetWidth + 'px';
+    var rect = tagInput.getBoundingClientRect();
+    suggestionsDiv.style.left = rect.left + 'px';
+    suggestionsDiv.style.top = (rect.bottom + window.scrollY) + 'px';
+    selectedIndex = -1;
+  }
+
+  function handleKeydown(e) {
+    if (!suggestionsDiv.style.display || suggestionsDiv.style.display === 'none') {
+      return;
+    }
+
+    var items = suggestionsDiv.querySelectorAll('.tag-suggestion-item');
+
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      selectedIndex = (selectedIndex + 1) % items.length;
+      highlightItem(items);
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      selectedIndex = (selectedIndex - 1 + items.length) % items.length;
+      highlightItem(items);
+    } else if (e.key === 'Enter' || e.key === 'Tab') {
+      e.preventDefault();
+      if (selectedIndex >= 0 && selectedIndex < items.length) {
+        insertTag(items[selectedIndex].textContent);
+      } else if (items.length > 0) {
+        insertTag(items[0].textContent);
+      }
+    } else if (e.key === 'Escape') {
+      suggestionsDiv.style.display = 'none';
+    }
+  }
+
+  function highlightItem(items) {
+    Array.from(items).forEach(function(item, index) {
+      if (index === selectedIndex) {
+        item.classList.add('selected');
+      } else {
+        item.classList.remove('selected');
+      }
+    });
+  }
+
+  function insertTag(tag) {
+    var cursorPos = tagInput.selectionStart;
+    var inputValue = tagInput.value;
+    var leftPart = inputValue.slice(0, cursorPos);
+    var rightPart = inputValue.slice(cursorPos);
+
+    var startPos = leftPart.lastIndexOf(' ') + 1;
+    var newValue = leftPart.slice(0, startPos) + tag + ' ' + rightPart;
+
+    tagInput.value = newValue;
+    tagInput.setSelectionRange(startPos + tag.length + 1, startPos + tag.length + 1);
+    suggestionsDiv.style.display = 'none';
+    tagInput.focus();
+  }
+});
+</script>")))
 
 (= submit-instructions*
    "Leave URL blank to submit a question for discussion. If there is
@@ -2622,10 +2767,10 @@
 
 (= tags-to-merge* '("game"    "games"      "game"       "gaming"        "mathematics" "maths"
                     "286"     "80286"      "386"        "80386"         "386"         "i386"
-		    "appleii" "apple2"     "appleiie"   "apple2e"       "msdos"       "dos"
-		    "mac"     "macintosh"  "historical" "history"       "6502"        "mos6502"
+                    "appleii" "apple2"     "appleiie"   "apple2e"       "msdos"       "dos"
+                    "mac"     "macintosh"  "historical" "history"       "6502"        "mos6502"
                     "floppy"  "floppydisk" "micro"      "microcomputer" "mini"        "minicomputer"
-		    "68k"     "68000"      "emulation"  "emulator"
+                    "68k"     "68000"      "emulation"  "emulator"
 ))
 
 (defbg batch-merge-tags-daily 1440
