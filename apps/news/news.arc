@@ -2593,6 +2593,44 @@
     (pr "\nMerge complete. Modified " modified " items.")
     modified))
 
+(def merge-tags (tag-pairs)
+  (let total-modified 0
+    (prn "Starting batch tag merge operation...\n")
+
+    (each pair tag-pairs
+      (with (target-tag (car pair)
+             source-tag (cadr pair))
+        (prn "\n--------------------\n")
+        (prn "Processing: " source-tag " → " target-tag "\n")
+        (let modified (merge-tag target-tag source-tag)
+          (++ total-modified modified)
+          (prn "Completed: " modified " items modified for this pair.\n"))))
+
+(prn "\n====================\n")
+    (prn "Batch merge operation complete. Total modified items: " total-modified)
+    total-modified))
+
+(def batch-merge-tags (tags-list)
+  (if (odd (len tags-list))
+    (do (prn "Error: Tags list must have an even number of elements (target, source pairs)")
+        nil)
+    (let tag-pairs nil
+      (while tags-list
+        (push (list (car tags-list) (cadr tags-list)) tag-pairs)
+        (= tags-list (cddr tags-list)))
+      (merge-tags (rev tag-pairs)))))
+
+(= tags-to-merge* '("game"    "games"      "game"       "gaming"        "mathematics" "maths"
+                    "286"     "80286"      "386"        "80386"         "386"         "i386"
+		    "appleii" "apple2"     "appleiie"   "apple2e"       "msdos"       "dos"
+		    "mac"     "macintosh"  "historical" "history"       "6502"        "mos6502"
+                    "floppy"  "floppydisk" "micro"      "microcomputer" "mini"        "minicomputer"
+		    "68k"     "68000"      "emulation"  "emulator"
+))
+
+(defbg batch-merge-tags-daily 1440
+  (batch-merge-tags (tags-to-merge)))
+
 (adop editors ()
   (tab (each u (users [is (uvar _ auth) 1])
          (row (userlink user u)))))
