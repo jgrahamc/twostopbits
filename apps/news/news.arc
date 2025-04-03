@@ -2765,12 +2765,13 @@ function addTag(tag) {
         (= tags-list (cddr tags-list)))
       (merge-tags (rev tag-pairs)))))
 
-(= tags-to-merge* '("game"    "games"      "game"       "gaming"        "mathematics" "maths"
-                    "286"     "80286"      "386"        "80386"         "386"         "i386"
-                    "appleii" "apple2"     "appleiie"   "apple2e"       "msdos"       "dos"
-                    "mac"     "macintosh"  "historical" "history"       "6502"        "mos6502"
-                    "floppy"  "floppydisk" "micro"      "microcomputer" "mini"        "minicomputer"
-                    "68k"     "68000"      "emulation"  "emulator"
+(= tags-to-merge* '("game"    "games"      "game"       "gaming"         "mathematics" "maths"
+                    "286"     "80286"      "386"        "80386"          "386"         "i386"
+                    "appleii" "apple2"     "appleiie"   "apple2e"        "msdos"       "dos"
+                    "mac"     "macintosh"  "historical" "history"        "6502"        "mos6502"
+                    "floppy"  "floppydisk" "micro"      "microcomputer"  "mini"        "minicomputer"
+                    "68k"     "68000"      "emulation"  "emulator"       "spectrum"    "zxspectrum"
+		    "game"    "videogames" "cpu"        "microprocessor"
 ))
 
 (defbg batch-merge-tags-daily 1440
