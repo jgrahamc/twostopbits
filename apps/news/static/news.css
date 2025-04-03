@@ -5,6 +5,16 @@ body  {
 	color:#000000;
 }
 
+input, textarea, select {
+  font-size: 14px !important;
+  font-family: inherit;
+  padding: 4px;
+}
+
+textarea {
+  line-height: 1.4;
+}
+
 a:link, a:visited { text-decoration: none;}
 
 form {
