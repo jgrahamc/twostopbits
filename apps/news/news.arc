@@ -1156,7 +1156,7 @@
                    _!id)) (vals items*)))
     (set-ia-archive (items* k))))
 
-(defbg update-ia-daily 1440
+(defbg update-ia-daily 86400
   (update-ia-items))
 
 (def titlelink (s url user)
@@ -2765,17 +2765,72 @@ function addTag(tag) {
         (= tags-list (cddr tags-list)))
       (merge-tags (rev tag-pairs)))))
 
-(= tags-to-merge* '("game"    "games"      "game"       "gaming"         "mathematics" "maths"
-                    "286"     "80286"      "386"        "80386"          "386"         "i386"
-                    "appleii" "apple2"     "appleiie"   "apple2e"        "msdos"       "dos"
-                    "mac"     "macintosh"  "historical" "history"        "6502"        "mos6502"
-                    "floppy"  "floppydisk" "micro"      "microcomputer"  "mini"        "minicomputer"
-                    "68k"     "68000"      "emulation"  "emulator"       "spectrum"    "zxspectrum"
-		    "game"    "videogames" "cpu"        "microprocessor"
+(= tags-to-merge* '("game"      "games"        "game"       "gaming"         "mathematics" "maths"
+                    "286"       "80286"        "386"        "80386"          "386"         "i386"
+                    "appleii"   "apple2"       "appleiie"   "apple2e"        "msdos"       "dos"
+                    "mac"       "macintosh"    "historical" "history"        "6502"        "mos6502"
+                    "floppy"    "floppydisk"   "micro"      "microcomputer"  "mini"        "minicomputer"
+                    "68k"       "68000"        "emulation"  "emulator"       "spectrum"    "zxspectrum"
+		    "game"      "videogames"   "cpu"        "microprocessor" "c64"         "commodore64"
+		    "cpu"       "processor"    "education"  "educational"    "assembly"    "assembler"
+		    "gates"     "bill"         "1980s"      "80s"            "1990s"       "90s"
+		    "1970s"     "70s"          "debugging"  "debugger"       "accessory"   "accessories"
+		    "advent"    "adventofcode" "algorithm"  "algorithms"     "altair"      "altair8800"
+		    "animation" "animations"   "archive"    "archival"       "archive"     "archivist"
+		    "archive"   "archiving"    "bankrupt"   "bankruptcy"     "benchmark"   "benchmarks"
+		    "gates"     "billgates"    "book"       "books"          "bug"         "bugfix"
+		    "bug"       "bugfixes"     "bug"        "bugs"           "cabinet"     "cabinets"
+		    "cache"     "caching"      "canada"     "canadian"       "card"        "cards"
+		    "carmack"   "carmackslaw"  "challenge"  "challenges"     "china"       "chinese"
+		    "chip"      "chips"        "classic"    "classical"      "collecting"  "collection"
+		    "collecting" "collector"   "color"      "colour"         "communication" "communications"
+		    "compatible" "compatibility" "compiler" "compiling"      "crash"       "crashes"
+		    "advertisement" "advertising" "advertisement" "advertisements" "bbc" "bbcmicro"
 ))
 
-(defbg batch-merge-tags-daily 1440
-  (batch-merge-tags (tags-to-merge)))
+(defbg batch-merge-tags-daily 86400
+  (batch-merge-tags tags-to-merge*))
+
+(def cleanup-rare-tags ((o months-threshold 12))
+  (let removed-count 0
+
+    ; First, find tags with only one story
+    (let rare-tags (keep [is (cadr _) 1] (tablist tags*))
+
+      (if (empty rare-tags)
+        (pr "No single-use tags found.\n")
+        (do
+          (pr "Found " (len rare-tags) " single-use tags. Checking story ages...\n")
+
+          ; Convert months to minutes for age comparison
+          (let age-threshold (* months-threshold 30 24 60)
+
+            (each (tag _) rare-tags
+              (pr "Processing tag: " tag "...")
+
+              ; Find the story with this tag
+              (let stories-with-tag (keep [tagged? _ tag] stories*)
+
+                (if (empty stories-with-tag)
+                  (pr " No matching stories found. Tag count mismatch.\n")
+                  (let story (car stories-with-tag)
+                    (if (> (item-age story) age-threshold)
+                      (do
+                       ; Remove the tag from the story
+                        (let current-tags (tokens story!tags)
+                          (= story!tags (spacejoin (rem [is _ tag] current-tags)))
+                          (save-item story)
+
+                          ; Decrement the tag count (should reach zero)
+                          (if (is (-- (tags* tag)) 0)
+                            (= (tags* tag) nil))
+
+                          (++ removed-count)
+                          (pr " REMOVED (" (round (/ (item-age story) (* 24 60))) " days old)\n"))
+                      (pr " Skipped (story is newer than " months-threshold " months)\n"))))))))))
+
+    (pr "\nTag cleanup complete. Removed " removed-count " tag" (if (is removed-count 1) "" "s") ".\n")
+    removed-count))
 
 (adop editors ()
   (tab (each u (users [is (uvar _ auth) 1])
