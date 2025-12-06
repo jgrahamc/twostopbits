@@ -41,6 +41,8 @@
 ;list will be used as the default
    themes* `("default" "dark")
 
+   badges* (pair `(80 "Z80" 1024 "1K" 4096 "4K" 6502 "6502" 6809 "6809" 8080 "8080" 8192 "8K" 16384 "16K"))
+   
 )
 
 ; TODO
@@ -905,8 +907,19 @@
         (underlink "comments" (threads-url subject)))
       (sp)
       (underlink "rss" "follow?subject=@subject")
+      (para)
+      (pr (user-badges subject))
       (hook 'user user subject))))
-      
+
+(def user-badges (user)
+  (with (k (karma user))
+    (reduce + (map (fn (_) (user-badge k _)) badges*))))
+
+(def user-badge (k b)
+  (withs (t (car b)
+          i (cadr b))
+     (if (>= k t) (string "<img width=\"350px\" title=\"Karma above " t "\" src=\"/" i ".png\"><p/>"))))
+
 (def profile-form (user subject)
   (let prof (profile subject)
     (vars-form user
@@ -1629,7 +1642,7 @@
               (row "" "<b>or</b>")
               (row "url" (input "u" url 50))))
         (row "tags" (pr (string "<input name=\"tg\" id=\"tag-input\" value=\"" tags "\" size=\"30\" autocomplete=\"off\"
-	                          autocorrect=\"off\" autocapitalize=\"off\" spellcheck=\"false\">
+                                  autocorrect=\"off\" autocapitalize=\"off\" spellcheck=\"false\">
                                 <div id=\"tag-suggestions\" class=\"tag-suggestions\"></div>")))
         (row "" (submit))
         (spacerow 20)
@@ -2771,21 +2784,21 @@ function addTag(tag) {
                     "mac"       "macintosh"    "historical" "history"        "6502"        "mos6502"
                     "floppy"    "floppydisk"   "micro"      "microcomputer"  "mini"        "minicomputer"
                     "68k"       "68000"        "emulation"  "emulator"       "spectrum"    "zxspectrum"
-		    "game"      "videogames"   "cpu"        "microprocessor" "c64"         "commodore64"
-		    "cpu"       "processor"    "education"  "educational"    "assembly"    "assembler"
-		    "gates"     "bill"         "1980s"      "80s"            "1990s"       "90s"
-		    "1970s"     "70s"          "debugging"  "debugger"       "accessory"   "accessories"
-		    "advent"    "adventofcode" "algorithm"  "algorithms"     "altair"      "altair8800"
-		    "animation" "animations"   "archive"    "archival"       "archive"     "archivist"
-		    "archive"   "archiving"    "bankrupt"   "bankruptcy"     "benchmark"   "benchmarks"
-		    "gates"     "billgates"    "book"       "books"          "bug"         "bugfix"
-		    "bug"       "bugfixes"     "bug"        "bugs"           "cabinet"     "cabinets"
-		    "cache"     "caching"      "canada"     "canadian"       "card"        "cards"
-		    "carmack"   "carmackslaw"  "challenge"  "challenges"     "china"       "chinese"
-		    "chip"      "chips"        "classic"    "classical"      "collecting"  "collection"
-		    "collecting" "collector"   "color"      "colour"         "communication" "communications"
-		    "compatible" "compatibility" "compiler" "compiling"      "crash"       "crashes"
-		    "advertisement" "advertising" "advertisement" "advertisements" "bbc" "bbcmicro"
+                    "game"      "videogames"   "cpu"        "microprocessor" "c64"         "commodore64"
+                    "cpu"       "processor"    "education"  "educational"    "assembly"    "assembler"
+                    "gates"     "bill"         "1980s"      "80s"            "1990s"       "90s"
+                    "1970s"     "70s"          "debugging"  "debugger"       "accessory"   "accessories"
+                    "advent"    "adventofcode" "algorithm"  "algorithms"     "altair"      "altair8800"
+                    "animation" "animations"   "archive"    "archival"       "archive"     "archivist"
+                    "archive"   "archiving"    "bankrupt"   "bankruptcy"     "benchmark"   "benchmarks"
+                    "gates"     "billgates"    "book"       "books"          "bug"         "bugfix"
+                    "bug"       "bugfixes"     "bug"        "bugs"           "cabinet"     "cabinets"
+                    "cache"     "caching"      "canada"     "canadian"       "card"        "cards"
+                    "carmack"   "carmackslaw"  "challenge"  "challenges"     "china"       "chinese"
+                    "chip"      "chips"        "classic"    "classical"      "collecting"  "collection"
+                    "collecting" "collector"   "color"      "colour"         "communication" "communications"
+                    "compatible" "compatibility" "compiler" "compiling"      "crash"       "crashes"
+                    "advertisement" "advertising" "advertisement" "advertisements" "bbc" "bbcmicro"
 ))
 
 (defbg batch-merge-tags-daily 86400
