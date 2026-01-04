@@ -918,7 +918,7 @@
 (def user-badge (k b)
   (withs (t (car b)
           i (cadr b))
-     (if (>= k t) (string "<img width=\"350px\" title=\"Karma above " t "\" src=\"/" i ".png\"><p/>"))))
+     (if (>= k t) (string "<img title=\"Karma above " t "\" src=\"/" i ".png\"><p/>"))))
 
 (def profile-form (user subject)
   (let prof (profile subject)
