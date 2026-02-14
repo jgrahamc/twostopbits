@@ -2659,11 +2659,13 @@ function addTag(tag) {
         (each s stories
           (tag item
             (let comurl (+ site-url* (item-url s!id))
-              (tag title    (pr (eschtml s!title)
-                                (aif (sitename s!url) (+ " (" it ")") "")))
-              (tag link     (pr (if (blank s!url) comurl (eschtml s!url))))
-              (tag pubDate  (pr (rfc822 s!time)))
-              (tag comments (pr comurl))
+              (tag title        (pr (eschtml s!title)
+                                    (aif (sitename s!url) (+ " (" it ")") "")))
+              (tag link         (pr (if (blank s!url) comurl (eschtml s!url))))
+              (tag pubDate      (pr (rfc822 s!time)))
+              (tag comments     (pr comurl))
+              (tag commentCount (pr (- (len (family s)) 1)))
+              (tag slash:score  (pr s!score))
               (tag description
                 (cdata (link "Comments" comurl)))))))))
 
