@@ -1,5 +1,5 @@
 
-window.onload = function() {
+document.addEventListener('DOMContentLoaded', function() {
   if(byId(document, "userlink")) {
 
     var votelinks = byClass(document, "votelink");
@@ -11,7 +11,7 @@ window.onload = function() {
       }, false);
     }
   }
-}
+});
 
 
 function byId(e, id) {

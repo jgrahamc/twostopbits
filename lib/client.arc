@@ -23,18 +23,41 @@
         (close ,i ,o)
         ,response))))
 
-(def mkreq (url (o querylist) (o method "GET") (o cookies) (o headers))
+(def mkreq (url (o querylist) (o method "GET") (o cookies) (o headers) (o timeout))
   "Submit a HTTP request with 'url'. \
-'querylist' contains field-value pairs, hence its length must be even."
+'querylist' contains field-value pairs, hence its length must be even. \
+'timeout' is an optional deadline in seconds; if the request takes longer it is aborted."
   (let url (parse-url url)
-    (w/io (get-io   url!resource url!host url!port)
-          (build-req url!host
-                    url!path
-                    (build-query url!query querylist)
-                    (upcase method)
-                    cookies
-                    headers)
-          receive-response)))
+    (if (no timeout)
+      (w/io (get-io   url!resource url!host url!port)
+            (build-req url!host
+                      url!path
+                      (build-query url!query querylist)
+                      (upcase method)
+                      cookies
+                      headers)
+            receive-response)
+      (withs (result nil done nil
+              worker (thread
+                       (= result
+                         (errsafe
+                           (w/io (get-io   url!resource url!host url!port)
+                                 (build-req url!host
+                                           url!path
+                                           (build-query url!query querylist)
+                                           (upcase method)
+                                           cookies
+                                           headers)
+                                 receive-response)))
+                       (set done))
+              watcher (thread
+                        (sleep timeout)
+                        (unless done
+                          (kill-thread worker))))
+        (while (and (~dead worker) (no done))
+          (sleep 0.1))
+        (when watcher (kill-thread watcher))
+        result))))
 
 (mac defreq (name url (o fields) (o method "GET") (o cookies))
   "Defines a function 'name' that performs a HTTP request to 'url', \

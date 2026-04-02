@@ -571,14 +571,9 @@
 (def userstyle (user)
   (with (font-size (aif (and user (uvar user font-size)) it 12)
          bgcolor (hexrep (main-color user)))
-    (pr 
-      (tag ("style" "type" "text/css")
-        (string  "body { 
-                    font-size:" font-size "pt!important; 
-                  }
-                  .topcolor { 
-                     background-color: #" bgcolor 
-                  "};")))))
+    (tag ("style" "type" "text/css")
+      (pr "body { font-size:" font-size "pt!important; } "
+          ".topcolor { background-color: #" bgcolor "; }"))))
 
 ; css link to user-specified theme or default on fail
 (def usertheme (user)
@@ -607,7 +602,7 @@
            (usertheme, gu)
            (gentag link "rel" "icon" "href" "/favicon.ico")
            (gentag "meta" "name" "viewport" "content" "width=device-width, initial-scale=1.0")
-           (tag (script "type" "text/javascript" "src" "/news.js"))
+           (tag (script "type" "text/javascript" "src" "/news.js" "defer" "defer"))
            (tag title (pr (+ this-site* (if ,gt (+ bar* ,gt) "")))))
            (tag body 
            ;(tag (div "class" "layout sand") 
@@ -617,9 +612,6 @@
              (tag (div "class" "topcolor page-header")
                
                (tag (span "id" "navleft")
-                 
-                 (tag (link rel "icon" href logo-url*))
-                 
                  (tag (a "id" "logo" href parent-url*)
                    (tag (img src logo-url*)))
 
@@ -1146,31 +1138,39 @@
 ; the data locally and return whence, otherwise return a link to IA to
 ; archive the url.
 
+(= ia-request-timeout* 15)
+
 (def set-ia-archive (s (o port stdin))
-  (let arch (fromstring ((mkreq (string "https://archive.org/wayback/available?url=" s!url)) 1) (read-json (port)))
-    (if (len> arch!archived_snapshots 0)
-      (do
-        (= s!archiveurl arch!archived_snapshots!closest!url)
-        (save-item s)))))
+  (errsafe
+    (awhen (mkreq (string "https://archive.org/wayback/available?url=" s!url)
+                  nil "GET" nil nil ia-request-timeout*)
+      (let arch (fromstring (it 1) (read-json (port)))
+        (when (and arch arch!archived_snapshots (len> arch!archived_snapshots 0))
+          (= s!archiveurl arch!archived_snapshots!closest!url)
+          (save-item s))))))
 
 (def ia-archivelink (s)
   (if s!archiveurl
     (tostring (pr " | ") (tag ("a" "href" s!archiveurl) (pr "ia")))
     ""))
 
+(= ia-batch-size* 50)
+
 (def update-ia-items ()
-  (each k (sort >
-            (trues
-              (fn (_)
-               (if (and (is _!type 'story)
-                         _!url
-                         (len> _!url 0)
-                         (no _!archiveurl))
-                   _!id)) (vals items*)))
-    (set-ia-archive (items* k))))
+  (each k (firstn ia-batch-size*
+            (sort >
+              (trues
+                (fn (_)
+                 (if (and (is _!type 'story)
+                           _!url
+                           (len> _!url 0)
+                           (no _!archiveurl))
+                     _!id)) (vals items*))))
+    (errsafe (set-ia-archive (items* k)))
+    (sleep 1)))
 
 (defbg update-ia-daily 86400
-  (update-ia-items))
+  (errsafe (update-ia-items)))
 
 (def titlelink (s url user)
   (let toself (blank url)
@@ -2719,35 +2719,37 @@ function addTag(tag) {
     ; Convert to lowercase for case insensitivity
     (= target-tag (downcase target-tag)
        source-tag (downcase source-tag))
-    
+
     (prn "Merging tag \"" source-tag "\" into \"" target-tag "\"...")
-    
-    ; Update the items
+
+    ; Update the items, yielding periodically to avoid starving
+    ; request-handling threads
     (each-loaded-item i
-      (when (and (in i!type 'story 'poll) 
+      (sleep 0)
+      (when (and (in i!type 'story 'poll)
                  (tagged? i source-tag))
         (++ modified)
         (prn "Updating item " i!id " - " i!title "...")
-        
+
         (let current-tags (tokens i!tags)
           (prn current-tags)
         (let new-tags (dedup (cons target-tag (rem [is _ source-tag] current-tags)))
           (prn new-tags)
-          
+
           (if (tags* source-tag)
             (when (is (-- (tags* source-tag)) 0)
             (= (tags* source-tag) nil)))
 
           (prn target-tag)
-          
+
           (unless (mem target-tag current-tags)
             (if (tags* target-tag)
                 (++ (tags* target-tag))
                 (= (tags* target-tag) 1)))
-          
+
           (= i!tags (spacejoin new-tags))
           (save-item i)))))
-    
+
     (pr "\nMerge complete. Modified " modified " items.")
     modified))
 
@@ -2802,7 +2804,7 @@ function addTag(tag) {
 ))
 
 (defbg batch-merge-tags-daily 86400
-  (batch-merge-tags tags-to-merge*))
+  (errsafe (batch-merge-tags tags-to-merge*)))
 
 (adop editors ()
   (tab (each u (users [is (uvar _ auth) 1])
@@ -2813,17 +2815,24 @@ function addTag(tag) {
 
 (defbg update-avg 45
   (unless (or (empty profs*) (no stories*))
-    (update-avg (rand-user [and (only.> (car (uvar _ submitted))
-                                        (- maxid* initload*))
-                                (len> (uvar _ submitted)
-                                      update-avg-threshold*)]))))
+    (awhen (rand-user [and (only.> (car (uvar _ submitted))
+                                   (- maxid* initload*))
+                           (len> (uvar _ submitted)
+                                 update-avg-threshold*)])
+      (update-avg it))))
 
 (def update-avg (user)
   (= (uvar user avg) (comment-score user))
   (save-prof user))
 
+; Limit attempts to avoid infinite spin when few users match the test
 (def rand-user ((o test idfn))
-  (evtil (rand-key profs*) test))
+  (let attempts 100
+    (catch
+      (while (> (-- attempts) 0)
+        (let u (rand-key profs*)
+          (if (test u) (throw u))
+          (sleep 0))))))
 
 ; Ignore the most recent 5 comments since they may still be gaining votes.
 ; Also ignore the highest-scoring comment, since possibly a fluff outlier.

@@ -437,18 +437,30 @@ stdout, returns a url to redirect requests to after processing."
 ; do is estimate what the max no of fnids can be and set the harvest
 ; limit there-- beyond that the only solution is to buy more memory.
 
+; Harvest fnids in a background thread to avoid blocking request
+; handlers.  The old approach did expensive O(n) list operations
+; synchronously at the end of every request, which starved all
+; other green threads once the fnid table grew large.
+
+(= harvest-pending* nil)
+
 (def harvest-fnids ((o n 50000))  ; was 20000
-  (when (len> fns* n)
-    (pull (fn ((id created lasts))
-            (when (> (since created) lasts)
-              (wipe (fns* id))
-              t))
-          timed-fnids*)
-    (atlet nharvest (trunc (/ n 10))
-      (let (kill keep) (split (rev fnids*) nharvest)
-        (= fnids* (rev keep))
-        (each id kill
-          (wipe (fns* id)))))))
+  (when (and (len> fns* n) (no harvest-pending*))
+    (set harvest-pending*)
+    (thread
+      (errsafe
+        (do
+          (pull (fn ((id created lasts))
+                  (when (> (since created) lasts)
+                    (wipe (fns* id))
+                    t))
+                timed-fnids*)
+          (atlet nharvest (trunc (/ n 10))
+            (let (kill keep) (split (rev fnids*) nharvest)
+              (= fnids* (rev keep))
+              (each id kill
+                (wipe (fns* id)))))))
+      (wipe harvest-pending*))))
 
 (= fnurl* "/x" rfnurl* "/r" rfnurl2* "/y" jfnurl* "/a")
 
