@@ -149,6 +149,7 @@
            "jpg"  "image/jpeg"
            "jpeg" "image/jpeg"
            "png"  "image/png"
+           "svg"  "image/svg+xml"
            "css"  "text/css"
            "js"   "text/javascript"
            "txt"  "text/plain"
