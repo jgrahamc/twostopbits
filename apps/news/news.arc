@@ -478,7 +478,7 @@
       (lightweight-url s!url)))
 
 (defmemo lightweight-url (url)
-  (in (downcase (last (tokens url #\.))) "png" "jpg" "jpeg"))
+  (in (downcase (last (tokens url #\.))) "png" "jpg" "jpeg" "svg"))
 
 (def item-age (i) (minutes-since i!time))
 
