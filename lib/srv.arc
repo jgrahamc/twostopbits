@@ -341,27 +341,44 @@
 
 (= srvops* (table) redirector* (table) optimes* (table) opcounts* (table))
 
+(= slow-op-warn* 2000)
+
+; Writes a timestamped line to logs/diag-<date>; safe to call from any
+; thread.  Stays out of the request handlers' stdout so it can't get
+; lost in a socket redirect or be swallowed by stdout buffering.
+(def diag-log args
+  (errsafe
+    (ontofile (+ logdir* "diag-" (memodate))
+              (atomic (apply prs (seconds) args) (prn)))))
+
 (def save-optime (name elapsed)
   ; this is the place to put a/b testing
   ; toggle a flag and push elapsed into one of two lists
   (++ (opcounts* name 0))
   (unless (optimes* name) (= (optimes* name) (queue)))
-  (enq-limit elapsed (optimes* name) 1000))
+  (enq-limit elapsed (optimes* name) 1000)
+  (when (and slow-op-warn* (> elapsed slow-op-warn*))
+    (diag-log 'slow-op name elapsed)))
 
 ; For ops that want to add their own headers.  They must thus remember
 ; to prrn a blank line before anything meant to be part of the page.
+
+(= log-op-start* t)
 
 (mac defop-raw (name parms . body)
   (w/uniq t1
     `(= (srvops* ',name)
         (fn ,parms
+          (when log-op-start* (diag-log 'op-start ',name))
           (let ,t1 (msec)
             (do1 (do ,@body)
                  (save-optime ',name (- (msec) ,t1))))))))
 
 (mac defopr-raw (name parms . body)
   `(= (redirector* ',name) t
-      (srvops* ',name)     (fn ,parms ,@body)))
+      (srvops* ',name)     (fn ,parms
+                             (when log-op-start* (diag-log 'op-start ',name))
+                             ,@body)))
 
 (mac defop (name parm . body)
 "Handles url /'name', giving 'body' access to the request in the variable
@@ -691,9 +708,22 @@ stdout, returns a url to redirect requests to after processing."
 
 ; should be a macro for this?
 
-(mac defbg (id sec . body)
+(= bg-warn* 500)
+
+(= log-bg-start* t)
+
+(def diag-time-bg (id thunk)
+  (when log-bg-start* (diag-log 'bg-start id))
+  (let t0 (msec)
+    (after
+      (thunk)
+      (let dt (- (msec) t0)
+        (when (and bg-warn* (> dt bg-warn*))
+          (diag-log 'bg id dt))))))
+
+(mac defbg (id sec . forms)
   `(do (pull [caris _ ',id] pending-bgthreads*)
-       (push (list ',id (fn () ,@body) ,sec)
+       (push (list ',id (fn () (diag-time-bg ',id (fn () ,@forms))) ,sec)
              pending-bgthreads*)))
 
 

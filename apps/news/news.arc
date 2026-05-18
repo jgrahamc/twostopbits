@@ -2821,6 +2821,19 @@ function addTag(tag) {
                                  update-avg-threshold*)])
       (update-avg it))))
 
+; [diag] periodic snapshot of in-memory state and GC time
+(defbg diag-stats 60
+  (diag-log 'stats
+            'fns (len fns*)
+            'items (len items*)
+            'stories (len stories*)
+            'comments (len comments*)
+            'ranked (len ranked-stories*)
+            'profs (len profs*)
+            'maxid maxid*
+            'gc-ms (current-gc-milliseconds)
+            'mem-mb (trunc (/ (memory) 1048576))))
+
 (def update-avg (user)
   (= (uvar user avg) (comment-score user))
   (save-prof user))

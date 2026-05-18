@@ -1709,16 +1709,32 @@ Arc 3.2 documentation: https://arclanguage.github.io/ref.
 
 (define ar-atomic-sema (make-semaphore 1))
 (define ar-atomic-cell (make-thread-cell #f))
+; [diag] thresholds in ms; set to #f to disable per-call logging
+(define ar-atomic-wait-warn 500)
+(define ar-atomic-hold-warn 200)
+(define (ar-atomic-log waited held)
+  (when (or (and ar-atomic-wait-warn (> waited ar-atomic-wait-warn))
+            (and ar-atomic-hold-warn (> held ar-atomic-hold-warn)))
+    (eprintf "[diag] atomic wait=~ams held=~ams~n"
+             (inexact->exact (round waited))
+             (inexact->exact (round held)))
+    (flush-output (current-error-port))))
 (xdef atomic-invoke (lambda (f)
                        (if (thread-cell-ref ar-atomic-cell)
                            (ar-apply f '())
-                           (begin
+                           (let ([t-pre (current-inexact-milliseconds)])
                              (thread-cell-set! ar-atomic-cell #t)
                              (protect
                               (lambda ()
                                 (call-with-semaphore
                                  ar-atomic-sema
-                                 (lambda () (ar-apply f '()))))
+                                 (lambda ()
+                                   (let ([t-acq (current-inexact-milliseconds)])
+                                     (begin0
+                                       (ar-apply f '())
+                                       (ar-atomic-log
+                                         (- t-acq t-pre)
+                                         (- (current-inexact-milliseconds) t-acq)))))))
                               (lambda ()
                                 (thread-cell-set! ar-atomic-cell #f)))))))
 
