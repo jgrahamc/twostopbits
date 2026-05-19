@@ -869,17 +869,14 @@
     (string "Search results for \"" terms #\")))
 
 (def search (stories terms)
-  (keep [match-all? _ terms] stories))
+  (let pats (map [re:string "(?i:" _ ")"] terms)
+    (keep [match-all? _ pats] stories)))
 
-(def match-all? (story terms)
-  (all idfn (map [match? story _] terms)))
+(def match-all? (story pats)
+  (all [match? story _] pats))
 
-(def match? (story term)
-  (some [match-ignoring-case? (string story._) term] '(title url by text)))
-
-(def match-ignoring-case? (s pat)
-  (re-match (re:string "(?i:" pat ")")
-            s))
+(def match? (story pat)
+  (some [re-match pat (string story._)] '(title url by text)))
 
 ; Users
 
@@ -2712,7 +2709,7 @@ function addTag(tag) {
           (if (is (mod (++ i) 10) 0) (spacerow 30))))))))
 
 (def popular-tags ()
-  (keys (sortable tags* >)))
+  (keys (sort (compare > cadr) (tablist tags*))))
 
 (def merge-tag (target-tag source-tag)
   (let modified 0
